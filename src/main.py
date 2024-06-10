@@ -4,9 +4,10 @@ import feedparser
 import time
 import sqlite3
 import requests
+from datetime import datetime, timezone
 
 sub = "xertunposting"
-discordWebhookUrl = "eg"
+discordWebhookUrl = "https://canary.discord.com/api/webhooks/1236914298010337312/e_TzQbuqk7zmqOz04bVKRBlXE08lAvGo6nAsqAjB4GxZjVdsWrdnb5w9iz6bm62NIrrw"
 
 def Loop(func):
     def Wrapper(*args, **kwargs):
@@ -25,6 +26,7 @@ class SubredditFeed:
         self.conn = sqlite3.connect('reddit_posts.db')
         self.CreateTable()
         self.lastPostId = self.GetLastPostId()
+        self.botStartTime = datetime.now(timezone.utc)
         
     def CreateTable(self):
         cursor = self.conn.cursor()
@@ -89,7 +91,9 @@ class SubredditFeed:
             sortedEntries = sorted(feed.entries, key=lambda x: x.published_parsed, reverse=True)
             latestPost = sortedEntries[0]
             postId = latestPost.id
-            if postId != self.lastPostId:
+            postTime = datetime(*latestPost.published_parsed[:6], tzinfo=timezone.utc)
+            
+            if postId != self.lastPostId and postTime > self.botStartTime:
                 print("New post detected:")
                 print("Title:", latestPost.title)
                 print("Link:", latestPost.link)
