@@ -7,7 +7,7 @@ import requests
 from datetime import datetime, timezone
 
 sub = "xertunposting"
-discordWebhookUrl = "https://canary.discord.com/api/webhooks/1236914298010337312/e_TzQbuqk7zmqOz04bVKRBlXE08lAvGo6nAsqAjB4GxZjVdsWrdnb5w9iz6bm62NIrrw"
+discordWebhookUrl = "eg"
 
 def Loop(func):
     def Wrapper(*args, **kwargs):
