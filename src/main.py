@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 import feedparser
 import time
 import sqlite3
@@ -17,7 +15,6 @@ def Loop(func):
                 time.sleep(10)
         except KeyboardInterrupt:
             print("Stopping...")
-        
     return Wrapper
 
 class SubredditFeed:
@@ -25,29 +22,33 @@ class SubredditFeed:
         self.subreddit = subreddit
         self.conn = sqlite3.connect('reddit_posts.db')
         self.CreateTable()
-        self.lastPostId = self.GetLastPostId()
+        self.lastPostIds = self.GetLastPostIds()
         self.botStartTime = datetime.now(timezone.utc)
         
     def CreateTable(self):
         cursor = self.conn.cursor()
-        cursor.execute('''CREATE TABLE IF NOT EXISTS last_post (
+        cursor.execute('''CREATE TABLE IF NOT EXISTS last_posts (
                             subreddit TEXT,
-                            last_post_id TEXT
+                            post_ids TEXT
                         )''')
         self.conn.commit()
         
-    def GetLastPostId(self):
+    def GetLastPostIds(self):
         cursor = self.conn.cursor()
-        cursor.execute("SELECT last_post_id FROM last_post WHERE subreddit=?", (self.subreddit,))
+        cursor.execute("SELECT post_ids FROM last_posts WHERE subreddit=?", (self.subreddit,))
         result = cursor.fetchone()
         if result:
-            return result[0]
+            return result[0].split(',')
         else:
-            return None
+            return []
         
-    def UpdateLastPostId(self, postId):
+    def UpdateLastPostIds(self, postId):
+        self.lastPostIds.append(postId)
+        if len(self.lastPostIds) > 10:
+            self.lastPostIds.pop(0)
+        
         cursor = self.conn.cursor()
-        cursor.execute("REPLACE INTO last_post (subreddit, last_post_id) VALUES (?, ?)", (self.subreddit, postId))
+        cursor.execute("REPLACE INTO last_posts (subreddit, post_ids) VALUES (?, ?)", (self.subreddit, ','.join(self.lastPostIds)))
         self.conn.commit()
         
     def FetchFeed(self):
@@ -93,14 +94,13 @@ class SubredditFeed:
             postId = latestPost.id
             postTime = datetime(*latestPost.published_parsed[:6], tzinfo=timezone.utc)
             
-            if postId != self.lastPostId and postTime > self.botStartTime:
+            if postId not in self.lastPostIds and postTime > self.botStartTime:
                 print("New post detected:")
                 print("Title:", latestPost.title)
                 print("Link:", latestPost.link)
                 print("Published:", latestPost.published)
                 self.PostToDiscord(latestPost)
-                self.UpdateLastPostId(postId)
-                self.lastPostId = postId
+                self.UpdateLastPostIds(postId)
         else:
             print("No posts in feed.")
             
