@@ -35,7 +35,7 @@ class SubredditFeed:
         self.CreateTable()
         self.lastPostIds = self.GetLastPostIds()
         self.botStartTime = datetime.now(timezone.utc)
-        self.token, self.refreshToken = self.Auth()
+        self.token = self.Auth()
 
     def Auth(self):
         uri = "https://www.reddit.com/api/v1/access_token"
@@ -47,28 +47,14 @@ class SubredditFeed:
         if res.status_code == 200:
             json = res.json()
             print("Authenticated...")
-            print(json)
-            return json["access_token"], json["refresh_token"]
+            return json["access_token"]
         else:
             print(f"FAILED to authenticate!!!!!!: {res.status_code}")
             print(res.json())
             raise Exception("FAILED auth!!!")
 
     def Refresh(self):
-        print("Refreshing")
-        uri = "https://www.reddit.com/api/v1/access_token"
-        auth = requests.auth.HTTPBasicAuth(clientId, clientSecret)
-        headers = {"User-Agent": agent}
-        data = {"grant_type": "refresh_token", "refresh_token": self.refreshToken}
-
-        res = requests.post(uri, auth=auth, data=data, headers=headers)
-        if res.status_code == 200:
-            print("Refreshed")
-            self.token = res.json()["access_token"]
-        else:
-            print(f"Refresh FAIL: {res.status_code}")
-            print(res.json())
-            raise Exception("Refresh FAIL!!!")
+        self.token = self.Auth()
         
     def CreateTable(self):
         cursor = self.conn.cursor()
