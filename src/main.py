@@ -62,6 +62,7 @@ class SubredditFeed:
             return response.json()
         else:
             print(f"EPIC FAIL! code: {response.status_code}")
+            print("res: ", response)
             return None
     
     def PostToDiscord(self, post, webhook):
