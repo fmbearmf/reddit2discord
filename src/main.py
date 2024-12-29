@@ -46,7 +46,7 @@ class SubredditFeed:
         res = requests.post(uri, auth=auth, data=data, headers=headers)
         if res.status_code == 200:
             json = res.json()
-            print("Authenticated...")
+            print("Authenticated: ", json["access_token"])
             return json["access_token"]
         else:
             print(f"FAILED to authenticate!!!!!!: {res.status_code}")
@@ -125,9 +125,6 @@ class SubredditFeed:
                     "image": {
                         "url": image_url
                     } if image_url.startswith('http') else {},
-                    "video": {
-                        "url": video_url if video_url else None
-                    } if (video_url and video_url.startswith('http') and (post['data'].get('is_video'))) else {},
                     "footer": {
                         "text": f"r/{self.subreddit} • Posted at {datetime.fromtimestamp(post['data']['created_utc'], tz=timezone.utc)}"
                     }
@@ -135,6 +132,15 @@ class SubredditFeed:
             ]
         }
         response = requests.post(webhook, json=payload)
+
+        if (video_url != None):
+            video_payload = {
+                "username": "food eater 20",
+                "avatar_url": "https://clipground.com/images/bread-loaf-png-3.png",
+                "content": video_url
+            }
+
+            response2 = requests.post(webhook, json=video_payload)
     
     @Loop
     def CheckPosts(self):
