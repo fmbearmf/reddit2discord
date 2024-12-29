@@ -8,6 +8,8 @@ from datetime import datetime, timezone
 
 sub = "xertunposting"
 discordWebhookUrl = "eg"
+cotdWebhook = "eg"
+cotdFlair = "cat of the day"
 
 def Loop(func):
     def Wrapper(*args, **kwargs):
@@ -58,7 +60,7 @@ class SubredditFeed:
         feed = feedparser.parse(feedUrl)
         return feed
     
-    def PostToDiscord(self, post):
+    def PostToDiscord(self, post, webhook):
         author_name = post.author[3:]
         author_avatar_url = f"https://avatar-resolver.vercel.app/reddit/{author_name}"
         author_url = f"https://www.reddit.com/user/{author_name}"
@@ -85,24 +87,34 @@ class SubredditFeed:
                 }
             ]
         }
-        response = requests.post(discordWebhookUrl, json=payload)
+        response = requests.post(webhook, json=payload)
     
     @Loop
     def CheckPosts(self):
         feed = self.FetchFeed()
         if feed.entries:
             sortedEntries = sorted(feed.entries, key=lambda x: x.published_parsed, reverse=True)
-            latestPost = sortedEntries[0]
-            postId = latestPost.id
-            postTime = datetime(*latestPost.published_parsed[:6], tzinfo=timezone.utc)
             
-            if postId not in self.lastPostIds and postTime > self.botStartTime:
-                print("New post detected:")
-                print("Title:", latestPost.title)
-                print("Link:", latestPost.link)
-                print("Published:", latestPost.published)
-                self.PostToDiscord(latestPost)
-                self.UpdateLastPostIds(postId)
+            for post in sortedEntries:
+                postId = post.id
+                postTime = datetime(*post.published_parsed[:6], tzinfo=timezone.utc)
+                flair = next((t for t in post.tags if t.get('term') == cotdFlair), None)
+
+                if postId not in self.lastPostIds and postTime > self.botStartTime:
+                    if flair:
+                        print("COTD detected:")
+                        print("Title:", post.title)
+                        print("Link:", post.link)
+                        print("Published:", post.published)
+                        print("Flair:", flair['term'])
+                        self.PostToDiscord(post, cotdWebhook)
+                    else:
+                        print("New post detected (without specific flair):")
+                        print("Title:", post.title)
+                        print("Link:", post.link)
+                        print("Published:", post.published)
+                        self.PostToDiscord(post, discordWebhookUrl)
+                    self.UpdateLastPostIds(postId)
         else:
             print("No posts in feed.")
             
