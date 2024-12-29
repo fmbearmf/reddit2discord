@@ -3,12 +3,20 @@
 import time
 import sqlite3
 import requests
+import os
 from datetime import datetime, timezone
 
 sub = "xertunposting"
-discordWebhookUrl = "eg"
-cotdWebhook = "eg"
+discordWebhookUrl = os.environ["F_WHOOK"]
+cotdWebhook = os.environ["F_SWHOOK"]
 cotdFlair = "cat of the day"
+
+clientId = os.environ["F_ID"]
+clientSecret = os.environ["F_SECRET"]
+username = os.environ["F_USERNAME"]
+password = os.environ["F_PASSWORD"]
+
+agent = "FoodEater Bot"
 
 def Loop(func):
     def Wrapper(*args, **kwargs):
@@ -27,6 +35,23 @@ class SubredditFeed:
         self.CreateTable()
         self.lastPostIds = self.GetLastPostIds()
         self.botStartTime = datetime.now(timezone.utc)
+        self.token = self.Auth()
+
+    def Auth(self):
+        uri = "https://www.reddit.com/api/v1/access_token"
+        auth = requests.auth.HTTPBasicAuth(clientId, clientSecret)
+        headers = {"User-Agent": agent}
+        data = {"grant_type": "password", "username": username, "password": password}
+
+        res = requests.post(uri, auth=auth, data=data, headers=headers)
+        if res.status_code == 200:
+            token = res.json()["access_token"]
+            print("Authenticated...")
+            return token
+        else:
+            print(f"FAILED to authenticate!!!!!!: {res.status_code}")
+            print(res.json())
+            raise Exception("FAILED auth!!!")
         
     def CreateTable(self):
         cursor = self.conn.cursor()
@@ -55,14 +80,14 @@ class SubredditFeed:
         self.conn.commit()
         
     def FetchFeed(self):
-        feedUrl = f"https://www.reddit.com/r/{self.subreddit}.json"
-        headers = {"User-Agent": "FoodEater Bot"}
-        response = requests.get(feedUrl, headers=headers)
-        if response.status_code == 200:
-            return response.json()
+        feedUrl = f"https://oauth.reddit.com/r/{self.subreddit}.json"
+        headers = {"User-Agent": agent, "Authorization": f"bearer {self.token}"}
+        res = requests.get(feedUrl, headers=headers)
+        if res.status_code == 200:
+            return res.json()
         else:
-            print(f"EPIC FAIL! code: {response.status_code}")
-            print("res: ", response)
+            print(f"EPIC FAIL! code: {res.status_code}")
+            print(res.json())
             return None
     
     def PostToDiscord(self, post, webhook):
