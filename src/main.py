@@ -47,6 +47,7 @@ class SubredditFeed:
         if res.status_code == 200:
             json = res.json()
             print("Authenticated...")
+            print(json)
             return json["access_token"], json["refresh_token"]
         else:
             print(f"FAILED to authenticate!!!!!!: {res.status_code}")
