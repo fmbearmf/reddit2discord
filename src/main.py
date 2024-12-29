@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import feedparser
 import time
 import sqlite3
 import requests
@@ -56,22 +55,33 @@ class SubredditFeed:
         self.conn.commit()
         
     def FetchFeed(self):
-        feedUrl = f"https://www.reddit.com/r/{self.subreddit}.rss"
-        feed = feedparser.parse(feedUrl)
-        return feed
+        feedUrl = f"https://www.reddit.com/r/{self.subreddit}.json"
+        headers = {"User-Agent": "FoodEater Bot"}
+        response = requests.get(feedUrl, headers=headers)
+        if response.status_code == 200:
+            return response.json()
+        else:
+            print(f"EPIC FAIL! code: {response.status_code}")
+            return None
     
     def PostToDiscord(self, post, webhook):
-        author_name = post.author[3:]
+        author_name = post['data']['author']
         author_avatar_url = f"https://avatar-resolver.vercel.app/reddit/{author_name}"
         author_url = f"https://www.reddit.com/user/{author_name}"
+
+        video_url = None
+        if (post['data'].get('is_video')):
+            video_url = post['data']['media']['reddit_video']['fallback_url']
+
+        image_url = post['data'].get('thumbnail')
         
         payload = {
             "username": "food eater 20",
             "avatar_url": "https://clipground.com/images/bread-loaf-png-3.png",
             "embeds": [
                 {
-                    "title": post.title,
-                    "url": post.link,
+                    "title": post['data'].get('title'),
+                    "url": f"https://www.reddit.com{post['data']['permalink']}",
                     "color": 16729344,
                     "author": {
                         "name": f"u/{author_name}",
@@ -79,10 +89,13 @@ class SubredditFeed:
                         "icon_url": author_avatar_url
                     },
                     "image": {
-                        "url": post.media_thumbnail[0]["url"] if post.get("media_thumbnail") else None
-                    },
+                        "url": image_url
+                    } if image_url.startswith('http') else {},
+                    "video": {
+                        "url": video_url if video_url else None
+                    } if (video_url and video_url.startswith('http') and (post['data'].get('is_video'))) else {},
                     "footer": {
-                        "text": f"r/{self.subreddit} • Posted at {post.published}"
+                        "text": f"r/{self.subreddit} • Posted at {datetime.fromtimestamp(post['data']['created_utc'], tz=timezone.utc)}"
                     }
                 }
             ]
@@ -92,31 +105,30 @@ class SubredditFeed:
     @Loop
     def CheckPosts(self):
         feed = self.FetchFeed()
-        if feed.entries:
-            sortedEntries = sorted(feed.entries, key=lambda x: x.published_parsed, reverse=True)
-            
-            for post in sortedEntries:
-                postId = post.id
-                postTime = datetime(*post.published_parsed[:6], tzinfo=timezone.utc)
-                flair = next((t for t in post.tags if t.get('term') == cotdFlair), None)
+        if feed and 'data' in feed and 'children' in feed['data']:
+            for post in feed['data']['children']:
+                postId = post['data']['id']
+                postTime = datetime.fromtimestamp(post['data']['created_utc'], tz=timezone.utc)
+                flair = post['data'].get('link_flair_text')
 
                 if postId not in self.lastPostIds and postTime > self.botStartTime:
-                    if flair:
+                    if flair == cotdFlair:
                         print("COTD detected:")
-                        print("Title:", post.title)
-                        print("Link:", post.link)
-                        print("Published:", post.published)
-                        print("Flair:", flair['term'])
+                        print("Title:", post['data']['title'])
+                        print("Link:", f"https://www.reddit.com{post['data']['permalink']}")
+                        print("Published:", postTime)
+                        print("Flair:", flair)
                         self.PostToDiscord(post, cotdWebhook)
                     else:
                         print("New post detected (without specific flair):")
-                        print("Title:", post.title)
-                        print("Link:", post.link)
-                        print("Published:", post.published)
+                        print("Title:", post['data']['title'])
+                        print("Link:", f"https://www.reddit.com{post['data']['permalink']}")
+                        print("Published:", postTime)
+                        print("Flair: ", flair)
                         self.PostToDiscord(post, discordWebhookUrl)
                     self.UpdateLastPostIds(postId)
         else:
-            print("No posts in feed.")
+            print("No posts in feed (or failed lol).")
             
 if __name__ == "__main__":
     feed = SubredditFeed(subreddit=sub)
