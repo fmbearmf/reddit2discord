@@ -29,7 +29,7 @@ def Loop(func):
             print("Stopping...")
     return Wrapper
 
-gitHash = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"]).decode("ascii").strip()
+gitHashShort = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"]).decode("ascii").strip()
 
 class SubredditFeed:
     def __init__(self, subreddit) -> None:
@@ -113,7 +113,7 @@ class SubredditFeed:
         image_url = post['data'].get('thumbnail')
         
         payload = {
-            "username": "food eater 20",
+            "username": f"food eater 20 ({gitHashShort})",
             "avatar_url": "https://clipground.com/images/bread-loaf-png-3.png",
             "embeds": [
                 {
@@ -130,7 +130,7 @@ class SubredditFeed:
                     } if image_url.startswith('http') else {},
                     "description": "Unfortunately Reddit videos don't store audio (idk why). The video link sent has no audio." if (video_url != None) else "",
                     "footer": {
-                        "text": f"Version {gitHash} • r/{self.subreddit} • Posted at {datetime.fromtimestamp(post['data']['created_utc'], tz=timezone.utc)}"
+                        "text": f"Version {gitHashShort} • r/{self.subreddit} • Posted at {datetime.fromtimestamp(post['data']['created_utc'], tz=timezone.utc)}"
                     }
                 }
             ]
@@ -139,7 +139,7 @@ class SubredditFeed:
 
         if (video_url != None):
             video_payload = {
-                "username": "food eater 20",
+                "username": f"food eater 20 ({gitHashShort})",
                 "avatar_url": "https://clipground.com/images/bread-loaf-png-3.png",
                 "content": video_url
             }
