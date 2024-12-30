@@ -4,6 +4,7 @@ import time
 import sqlite3
 import requests
 import os
+import subprocess
 from datetime import datetime, timezone
 
 sub = "xertunposting"
@@ -27,6 +28,8 @@ def Loop(func):
         except KeyboardInterrupt:
             print("Stopping...")
     return Wrapper
+
+gitHash = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"]).decode("ascii").strip()
 
 class SubredditFeed:
     def __init__(self, subreddit) -> None:
@@ -125,8 +128,9 @@ class SubredditFeed:
                     "image": {
                         "url": image_url
                     } if image_url.startswith('http') else {},
+                    "description": "Unfortunately Reddit videos don't store audio (idk why). The video link sent has no audio." if (video_url != None) else "",
                     "footer": {
-                        "text": f"r/{self.subreddit} • Posted at {datetime.fromtimestamp(post['data']['created_utc'], tz=timezone.utc)}"
+                        "text": f"Version {gitHash} • r/{self.subreddit} • Posted at {datetime.fromtimestamp(post['data']['created_utc'], tz=timezone.utc)}"
                     }
                 }
             ]
