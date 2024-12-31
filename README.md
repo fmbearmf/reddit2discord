@@ -1,7 +1,5 @@
-Literally 3 deps:
+Literally 2 Python deps:
 
 Requests
-
-Feedparser
 
 Sqlite
